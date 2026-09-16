@@ -1,15 +1,14 @@
 package com.documentos.document_service.service;
 
+import com.documentos.document_service.dto.InvoiceDocumentRequest;
 import com.documentos.document_service.model.Document;
+import com.documentos.document_service.pdf.ChromiumPdfRenderer;
 import com.documentos.document_service.repository.DocumentRepository;
-import com.microsoft.playwright.*;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
-import com.documentos.document_service.dto.InvoiceDocumentRequest;
-import java.nio.file.Path;
+
 import java.time.Instant;
-import com.documentos.document_service.pdf.ChromiumPdfRenderer;
 
 @Service
 public class DocumentService {
@@ -18,68 +17,95 @@ public class DocumentService {
     private final TemplateEngine templateEngine;
     private final ChromiumPdfRenderer chromiumPdfRenderer;
 
-    public DocumentService(DocumentRepository repository, TemplateEngine templateEngine, ChromiumPdfRenderer chromiumPdfRenderer, ChromiumPdfRenderer chromiumPdfRenderer1) {
+    public DocumentService(
+            DocumentRepository repository,
+            TemplateEngine templateEngine,
+            ChromiumPdfRenderer chromiumPdfRenderer) {
+
         this.repository = repository;
         this.templateEngine = templateEngine;
-        this.chromiumPdfRenderer = chromiumPdfRenderer1;
+        this.chromiumPdfRenderer = chromiumPdfRenderer;
     }
 
-    public byte[] generateTestPdf(String title, String name, String description) {
+    public byte[] generateTestPdf(
+            String title,
+            String name,
+            String description) {
+
         Document doc = new Document();
+
         doc.setTitle(title);
         doc.setName(name);
         doc.setDescription(description);
         doc.setCreatedAt(Instant.now());
+
         repository.save(doc);
 
         Context ctx = new Context();
+
         ctx.setVariable("title", title);
         ctx.setVariable("name", name);
         ctx.setVariable("description", description);
 
-        String html = templateEngine.process("test-pdf", ctx);
+        String html = templateEngine.process(
+                "test-pdf",
+                ctx
+        );
 
-        try (Playwright playwright = Playwright.create()) {
-            Browser browser = playwright.chromium().launch(
-                    new BrowserType.LaunchOptions().setHeadless(true));
-            Page page = browser.newPage();
-
-            page.setContent(html);
-            Path pdfPath = Path.of("tmp.pdf");
-            page.pdf(new Page.PdfOptions()
-                    .setPath(pdfPath)
-                    .setFormat("A4"));
-
-            byte[] bytes = java.nio.file.Files.readAllBytes(pdfPath);
-            java.nio.file.Files.deleteIfExists(pdfPath);
-            browser.close();
-            return bytes;
-        } catch (Exception e) {
-            throw new RuntimeException("Error generating PDF", e);
-        }
+        // Este método lo puedes mantener para las pruebas.
+        // Tu implementación actual funciona.
+        return chromiumPdfRenderer.render(html);
     }
 
-        public byte[] generateInvoice(InvoiceDocumentRequest invoice) {
+    public byte[] generateInvoice(InvoiceDocumentRequest invoice) {
 
-            Context context = new Context();
+        Context context = new Context();
 
-            context.setVariable("invoiceNumber", invoice.invoiceNumber());
-            context.setVariable("invoiceDate", invoice.invoiceDate());
+        context.setVariable(
+                "invoiceNumber",
+                invoice.invoiceNumber()
+        );
 
-            context.setVariable("company", invoice.company());
-            context.setVariable("customer", invoice.customer());
+        context.setVariable(
+                "invoiceDate",
+                invoice.invoiceDate()
+        );
 
-            context.setVariable("items", invoice.items());
+        context.setVariable(
+                "company",
+                invoice.company()
+        );
 
-            context.setVariable("subtotal", invoice.subtotal());
-            context.setVariable("taxTotal", invoice.taxTotal());
-            context.setVariable("total", invoice.total());
+        context.setVariable(
+                "customer",
+                invoice.customer()
+        );
 
-            String html = templateEngine.process(
-                    "invoice/standard",
-                    context
-            );
+        context.setVariable(
+                "items",
+                invoice.items()
+        );
 
-            return chromiumPdfRenderer.render(html);
-        }
+        context.setVariable(
+                "subtotal",
+                invoice.subtotal()
+        );
+
+        context.setVariable(
+                "taxTotal",
+                invoice.taxTotal()
+        );
+
+        context.setVariable(
+                "total",
+                invoice.total()
+        );
+
+        String html = templateEngine.process(
+                "invoice/standard",
+                context
+        );
+
+        return chromiumPdfRenderer.render(html);
     }
+}

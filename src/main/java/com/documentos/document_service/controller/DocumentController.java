@@ -1,58 +1,46 @@
 package com.documentos.document_service.controller;
 
+import com.documentos.document_service.dto.InvoiceDocumentRequest;
 import com.documentos.document_service.service.DocumentService;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.documentos.document_service.dto.InvoiceDocumentRequest;
 
 @RestController
-@RequestMapping("/api/v1/documents")
+@RequestMapping("/documents")
 public class DocumentController {
 
-    private final DocumentService service;
+    private final DocumentService documentService;
 
-    public DocumentController(DocumentService service) {
-        this.service = service;
-    }
-
-    @GetMapping("/test-pdf")
-    public ResponseEntity<byte[]> generateTestPdf(
-            @RequestParam(defaultValue = "Documento de prueba") String title,
-            @RequestParam(defaultValue = "Usuario") String name,
-            @RequestParam(defaultValue = "Descripción de prueba") String description) {
-
-        byte[] pdf = service.generateTestPdf(title, name, description);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"test.pdf\"")
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(pdf);
+    public DocumentController(DocumentService documentService) {
+        this.documentService = documentService;
     }
 
     @PostMapping(
-            value = "/invoices",
+            value = "/invoice",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_PDF_VALUE
     )
     public ResponseEntity<byte[]> generateInvoice(
             @RequestBody InvoiceDocumentRequest request) {
 
-        byte[] pdf = service.generateInvoice(request);
+        byte[] pdf = documentService.generateInvoice(request);
 
-        String fileName = request.invoiceNumber() + ".pdf";
+        String filename =
+                request.invoiceNumber() + ".pdf";
 
         return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
                 .header(
                         HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.inline()
-                                .filename(fileName)
+                        ContentDisposition
+                                .attachment()
+                                .filename(filename)
                                 .build()
                                 .toString()
                 )
+                .contentType(MediaType.APPLICATION_PDF)
                 .body(pdf);
     }
 }

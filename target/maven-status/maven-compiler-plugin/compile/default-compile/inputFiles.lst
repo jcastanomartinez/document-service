@@ -1,0 +1,7 @@
+/home/jcastano/Desarrollos/document-service/src/main/java/com/documentos/document_service/DocumentServiceApplication.java
+/home/jcastano/Desarrollos/document-service/src/main/java/com/documentos/document_service/controller/DocumentController.java
+/home/jcastano/Desarrollos/document-service/src/main/java/com/documentos/document_service/dto/InvoiceDocumentRequest.java
+/home/jcastano/Desarrollos/document-service/src/main/java/com/documentos/document_service/model/Document.java
+/home/jcastano/Desarrollos/document-service/src/main/java/com/documentos/document_service/pdf/ChromiumPdfRenderer.java
+/home/jcastano/Desarrollos/document-service/src/main/java/com/documentos/document_service/repository/DocumentRepository.java
+/home/jcastano/Desarrollos/document-service/src/main/java/com/documentos/document_service/service/DocumentService.java

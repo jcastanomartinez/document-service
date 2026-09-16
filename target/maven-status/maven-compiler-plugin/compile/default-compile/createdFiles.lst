@@ -1,0 +1,10 @@
+com/documentos/document_service/model/Document.class
+com/documentos/document_service/DocumentServiceApplication.class
+com/documentos/document_service/pdf/ChromiumPdfRenderer.class
+com/documentos/document_service/dto/InvoiceDocumentRequest$Customer.class
+com/documentos/document_service/controller/DocumentController.class
+com/documentos/document_service/repository/DocumentRepository.class
+com/documentos/document_service/dto/InvoiceDocumentRequest$InvoiceItem.class
+com/documentos/document_service/dto/InvoiceDocumentRequest$Company.class
+com/documentos/document_service/service/DocumentService.class
+com/documentos/document_service/dto/InvoiceDocumentRequest.class

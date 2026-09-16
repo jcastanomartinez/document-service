@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: document-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:172.17.0.2}:${DB_PORT:5432}/${DB_NAME:documentdb}
+    username: ${DB_USER:document_user}
+    password: ${DB_PASSWORD:document_pass}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
+
+server:
+  port: 8083
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true

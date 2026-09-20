@@ -8,6 +8,8 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 @Component
 public class ChromiumPdfRenderer {
 
@@ -15,32 +17,40 @@ public class ChromiumPdfRenderer {
     private Browser browser;
 
     @PostConstruct
-    public void init() {
-
-        playwright = Playwright.create();
-
-        browser = playwright.chromium().launch(
-                new com.microsoft.playwright.BrowserType.LaunchOptions()
-                        .setHeadless(true)
-                        .setArgs(java.util.List.of(
-                                "--no-sandbox",
-                                "--disable-dev-shm-usage"
-                        ))
-        );
+    public synchronized void init() {
+        startChromium();
     }
 
-    public byte[] render(String html) {
+    /**
+     * Playwright Java no es thread-safe. Tomcat puede invocar este componente
+     * desde varios hilos, por lo que serializamos el acceso al browser.
+     */
+    public synchronized byte[] render(String html) {
+        ensureBrowser();
 
+        try {
+            return renderWithBrowser(html);
+        } catch (RuntimeException firstFailure) {
+            // Si Chromium ha muerto, recreamos Playwright/Browser y reintentamos
+            // una vez. Esto evita dejar el microservicio inutilizado hasta reinicio.
+            restartChromium();
+            try {
+                return renderWithBrowser(html);
+            } catch (RuntimeException retryFailure) {
+                retryFailure.addSuppressed(firstFailure);
+                throw retryFailure;
+            }
+        }
+    }
+
+    private byte[] renderWithBrowser(String html) {
         try (BrowserContext context = browser.newContext()) {
-
             Page page = context.newPage();
 
             page.setContent(
                     html,
                     new Page.SetContentOptions()
-                            .setWaitUntil(
-                                    com.microsoft.playwright.options.WaitUntilState.NETWORKIDLE
-                            )
+                            .setWaitUntil(com.microsoft.playwright.options.WaitUntilState.NETWORKIDLE)
             );
 
             return page.pdf(
@@ -52,15 +62,53 @@ public class ChromiumPdfRenderer {
         }
     }
 
-    @PreDestroy
-    public void destroy() {
+    private void ensureBrowser() {
+        if (playwright == null || browser == null || !browser.isConnected()) {
+            restartChromium();
+        }
+    }
 
+    private void startChromium() {
+        playwright = Playwright.create();
+        browser = playwright.chromium().launch(
+                new com.microsoft.playwright.BrowserType.LaunchOptions()
+                        .setHeadless(true)
+                        .setArgs(List.of(
+                                "--no-sandbox",
+                                "--disable-dev-shm-usage"
+                        ))
+        );
+    }
+
+    private void restartChromium() {
+        closeChromium();
+        startChromium();
+    }
+
+    @PreDestroy
+    public synchronized void destroy() {
+        closeChromium();
+    }
+
+    private void closeChromium() {
         if (browser != null) {
-            browser.close();
+            try {
+                browser.close();
+            } catch (RuntimeException ignored) {
+                // Chromium puede haber terminado por su cuenta.
+            } finally {
+                browser = null;
+            }
         }
 
         if (playwright != null) {
-            playwright.close();
+            try {
+                playwright.close();
+            } catch (RuntimeException ignored) {
+                // Playwright puede haber terminado por su cuenta.
+            } finally {
+                playwright = null;
+            }
         }
     }
 }

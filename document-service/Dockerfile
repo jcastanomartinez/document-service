@@ -48,6 +48,6 @@ USER appuser
 EXPOSE 8083
 
 ENTRYPOINT ["java", \
-    "-XX:MaxRAMPercentage=70", \
+    "-XX:MaxRAMPercentage=50", \
     "-Djava.security.egd=file:/dev/./urandom", \
     "-jar", "/app/app.jar"]

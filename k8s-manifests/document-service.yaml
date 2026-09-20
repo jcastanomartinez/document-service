@@ -1,0 +1,211 @@
+# =============================================================================
+# document-service — manifiesto único para minikube (namespace: dev)
+#
+# Uso:
+#   eval $(minikube docker-env)
+#   docker build -t document-service:local .
+#   kubectl apply -f k8s/document-service.yaml
+#
+# Ver README.md para más detalle (incluida la variable DOCUMENT_SERVICE_URL
+# que hay que añadir a facturacion-service).
+# =============================================================================
+
+# --- Namespace (idempotente, por si aún no existe) --------------------------
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+
+---
+# --- Credenciales de la BD de document-service -------------------------------
+# Para un entorno real no commitees este bloque con valores reales: genera el
+# secret con `kubectl create secret generic ...` o con un gestor de secretos
+# (Sealed Secrets, SOPS, Vault, etc.).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: document-service-db-credentials
+  namespace: dev
+type: Opaque
+stringData:
+  POSTGRES_DB: documentdb
+  POSTGRES_USER: document_user
+  POSTGRES_PASSWORD: document_pass
+
+---
+# --- Almacenamiento de la BD --------------------------------------------------
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: document-service-db-pvc
+  namespace: dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+# --- Postgres de document-service (solo para dev/local, sin backups) --------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: document-service-db
+  namespace: dev
+  labels:
+    app: document-service-db
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: document-service-db
+  template:
+    metadata:
+      labels:
+        app: document-service-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: document-service-db-credentials
+          volumeMounts:
+            - name: db-storage
+              mountPath: /var/lib/postgresql/data
+              subPath: postgres
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", "$(POSTGRES_DB)"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", "$(POSTGRES_DB)"]
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: db-storage
+          persistentVolumeClaim:
+            claimName: document-service-db-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: document-service-db
+  namespace: dev
+spec:
+  selector:
+    app: document-service-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+---
+# --- Configuración no sensible de document-service ---------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: document-service-config
+  namespace: dev
+data:
+  DB_HOST: document-service-db
+  DB_PORT: "5432"
+
+---
+# --- Aplicación document-service ---------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: document-service
+  namespace: dev
+  labels:
+    app: document-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: document-service
+  template:
+    metadata:
+      labels:
+        app: document-service
+    spec:
+      containers:
+        - name: document-service
+          # Imagen construida localmente dentro del daemon de Docker de minikube
+          # (ver README.md). Por eso imagePullPolicy es IfNotPresent.
+          image: document-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8083
+          envFrom:
+            - configMapRef:
+                name: document-service-config
+          env:
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: document-service-db-credentials
+                  key: POSTGRES_DB
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: document-service-db-credentials
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: document-service-db-credentials
+                  key: POSTGRES_PASSWORD
+          # Playwright/Chromium tarda un poco en arrancar la primera vez,
+          # por eso el initialDelaySeconds generoso en las probes.
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8083
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            runAsNonRoot: true
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: document-service
+  namespace: dev
+spec:
+  selector:
+    app: document-service
+  ports:
+    - port: 8083
+      targetPort: 8083

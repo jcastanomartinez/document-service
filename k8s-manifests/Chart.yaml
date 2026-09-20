@@ -1,0 +1,6 @@
+apiVersion: v2
+name: microservices-k8s
+description: Chart de Helm para auth-service, facturacion-service, document-service, api-gateway y login-app (Angular)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

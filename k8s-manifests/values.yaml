@@ -1,0 +1,102 @@
+# Namespace por defecto para pruebas locales (Helm usará --namespace en Jenkins)
+namespace: dev
+
+# --- Secretos ---
+secrets:
+  authPassword: "T0byt081*"
+  facturacionPassword: "T0byt081*"
+  documentPassword: "T0byt081*"
+  jwtSecret: "no funciona"
+
+# --- Base de datos de auth ---
+authPostgres:
+  image: postgres:16
+  storage: 1Gi
+  db: auth
+  user: auth_user
+
+# --- Servicio de autenticación ---
+authService:
+  image:
+    repository: auth-service
+    tag: "1.0"
+    pullPolicy: Never
+  port: 8081
+  replicas: 1
+
+# --- Base de datos de facturación ---
+facturacionPostgres:
+  image: postgres:16
+  storage: 1Gi
+  db: facturas
+  user: fact_user
+
+# --- Servicio de facturación ---
+facturacionService:
+  image:
+    repository: facturacion-service
+    tag: "1.1"
+    pullPolicy: Never
+  port: 8082
+  replicas: 1
+
+# --- API Gateway ---
+apiGateway:
+  image:
+    repository: api-gateway
+    tag: "1.2"
+    pullPolicy: IfNotPresent
+  containerPort: 8080
+  servicePort: 80
+  nodePort: 31720
+  serviceType: NodePort
+  replicas: 1
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+
+# --- Frontend Angular (login-app) ---
+loginApp:
+  image:
+    repository: login-app
+    tag: "1.2"
+    pullPolicy: Never
+  containerPort: 80
+  servicePort: 80
+  nodePort: 30471
+  serviceType: NodePort
+  replicas: 2
+  resources:
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+
+# --- Base de datos de document-service ---
+documentPostgres:
+  image: postgres:16
+  storage: 1Gi
+  db: documentdb
+  user: document_user
+
+# --- Servicio de generación de documentos ---
+documentService:
+  image:
+    repository: document-service
+    tag: "1.0"
+    pullPolicy: Never
+  port: 8083
+  replicas: 1
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"

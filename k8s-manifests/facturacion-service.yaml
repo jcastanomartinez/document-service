@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: facturacion-service
+  namespace: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: facturacion-service
+  template:
+    metadata:
+      labels:
+        app: facturacion-service
+    spec:
+      containers:
+        - name: facturacion-service
+          image: facturacion-service:2.0
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 8082
+
+          env:
+            - name: DB_HOST
+              value: facturacion-postgres
+
+            - name: DB_PORT
+              value: "5432"
+
+            - name: DB_NAME
+              value: facturas
+
+            - name: DB_USER
+              value: fact_user
+
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: facturacion-password
+
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: jwt-secret
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: facturacion-service
+  namespace: dev
+spec:
+  selector:
+    app: facturacion-service
+  ports:
+    - port: 8082
+      targetPort: 8082
+  type: ClusterIP

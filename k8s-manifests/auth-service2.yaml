@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: facturacion
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+        - name: auth-service
+          image: docker.io/jesuscoto/auth-service:2.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081 # Tu app DEBE tener server.port=8081 en application.properties
+          # --- AÑADIDO: Configuración explícita del Probe ---
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            failureThreshold: 30 # Le da 5 minutos para arrancar (30 intentos * 10s)
+            periodSeconds: 10
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://auth-db:5432/auth
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef: { name: auth-db-credentials, key: 'username' }
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: auth-db-credentials, key: 'password' }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: facturacion
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - port: 8080 # Los demás pods te llamarán a través de http://auth-service:8080
+      targetPort: 8080 # Redirige el tráfico al 8081 del contenedor
+  type: ClusterIP

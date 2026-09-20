@@ -1,0 +1,38 @@
+# Da permiso al ServiceAccount de Jenkins (namespace "jenkins") para gestionar
+# deployments/pods/services en el namespace donde viven tus microservicios ("facturacion").
+#
+# Ajusta:
+#   - metadata.namespace (namespace de tus apps)
+#   - subjects[0].name / subjects[0].namespace (nombre real del release de Jenkins y su namespace)
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: facturacion
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jenkins-deployer
+  namespace: facturacion
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jenkins-deployer-binding
+  namespace: facturacion
+subjects:
+  - kind: ServiceAccount
+    name: jenkins            # nombre del release de Helm (helm install <NOMBRE> jenkins/jenkins)
+    namespace: jenkins       # namespace donde instalaste Jenkins
+roleRef:
+  kind: Role
+  name: jenkins-deployer
+  apiGroup: rbac.authorization.k8s.io

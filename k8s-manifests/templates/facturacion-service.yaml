@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: facturacion-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.facturacionService.replicas }}
+  selector:
+    matchLabels:
+      app: facturacion-service
+  template:
+    metadata:
+      labels:
+        app: facturacion-service
+    spec:
+      containers:
+        - name: facturacion-service
+          image: "{{ .Values.facturacionService.image.repository }}:{{ .Values.facturacionService.image.tag }}"
+          imagePullPolicy: {{ .Values.facturacionService.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.facturacionService.port }}
+          env:
+            - name: DB_HOST
+              value: facturacion-postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: {{ .Values.facturacionPostgres.db }}
+            - name: DB_USER
+              value: {{ .Values.facturacionPostgres.user }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: facturacion-password
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: jwt-secret
+            - name: DOCUMENT_SERVICE_URL
+              value: "http://document-service:{{ .Values.documentService.port }}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: facturacion-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: facturacion-service
+  ports:
+    - port: {{ .Values.facturacionService.port }}
+      targetPort: {{ .Values.facturacionService.port }}
+  type: ClusterIP

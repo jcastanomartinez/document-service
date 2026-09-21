@@ -41,6 +41,11 @@ RUN apt-get update \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
+# El navegador ya esta en la imagen: que Playwright no intente
+# descargar nada al arrancar la aplicacion.
+# (Se define DESPUES del RUN de instalacion para no saltarse el install.)
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
 # Usuario sin privilegios
 RUN useradd --create-home --shell /bin/bash appuser
 USER appuser

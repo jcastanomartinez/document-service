@@ -52,8 +52,6 @@ public class DocumentService {
                 ctx
         );
 
-        // Este método lo puedes mantener para las pruebas.
-        // Tu implementación actual funciona.
         return chromiumPdfRenderer.render(html);
     }
 

@@ -31,8 +31,6 @@ public class ChromiumPdfRenderer {
         try {
             return renderWithBrowser(html);
         } catch (RuntimeException firstFailure) {
-            // Si Chromium ha muerto, recreamos Playwright/Browser y reintentamos
-            // una vez. Esto evita dejar el microservicio inutilizado hasta reinicio.
             restartChromium();
             try {
                 return renderWithBrowser(html);

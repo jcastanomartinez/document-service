@@ -2,9 +2,9 @@ spring:
   application:
     name: document-service
   datasource:
-    url: jdbc:postgresql://${DB_HOST:172.17.0.2}:${DB_PORT:5435}/${DB_NAME:documentdb}
-    username: ${DB_USER:document_user}
-    password: ${DB_PASSWORD:document_pass}
+    url: jdbc:postgresql://localhost:5435/documentdb
+    username: document_user
+    password: T0byt081*
   jpa:
     hibernate:
       ddl-auto: update
